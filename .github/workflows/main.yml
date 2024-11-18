@@ -10,20 +10,43 @@ jobs:
 
     steps:
       # checkout to our repository so we have access to the source code
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # the actual deployment to google
-      - name: Cloud Functions Deploy
+      - id: auth
+        name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials: ${{ secrets.GCP_SA_KEY }}
-          name: python-hello-world-cf
-          description: Test python cloud function # nullable
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          region: europe-west1
-          source_dir: src
-          # name of our function in our main.py file, defaults to the resource name suffix 
-          entry_point: hello_world
-          # runtime to use for the function
-          runtime: python39
-#       env_vars: # optional
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+          create_credentials_file: true
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Verify Authentication
+        run: |
+          gcloud auth list
+          gcloud config list project
+          
+      - name: Set GCP Project
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          echo "Current project is $(gcloud config get-value project)"
+
+      - name: Deploy Cloud Function
+        id: deploy
+        run: |
+          gcloud functions deploy vectorizer \
+          --runtime python39 \
+          --trigger-http \
+          --allow-unauthenticated \
+          --entry-point hello_world
+          --region=us-central1 
+          --gen2
+
+      - name: Verify Deployment
+        if: success()
+        run: |
+          gcloud functions describe vectorizer \
+            --gen2 \
+            --region=us-central1

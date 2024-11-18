@@ -43,6 +43,7 @@ jobs:
           --entry-point hello_world
           --region=us-central1 
           --gen2
+          --source ./src
 
       - name: Verify Deployment
         if: success()
